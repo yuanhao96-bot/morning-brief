@@ -1,0 +1,3 @@
+# Ingest processing manifest. Tracks which books/articles have been
+# extracted and merged into the wiki. Regenerable from sources/corpus/.
+books: []

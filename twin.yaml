@@ -1,0 +1,73 @@
+name: digital-twin
+version: "0.1.0"
+description: >
+  A digital twin running on a dedicated machine, powered by Claude Code.
+  v0.1 scope: personalized information collection, ingestion into a wiki
+  knowledge base, and a daily synthesis brief. Built around a single
+  chained pipeline: radar → ingest → digest.
+
+modules:
+  persona:
+    skill: skills/persona/SKILL.md
+    schedule: manual
+    depends_on: []
+    description: >
+      Build and maintain the user's persona from transcripts,
+      writing samples, and behavioral patterns.
+
+  radar:
+    skill: skills/radar/SKILL.md
+    schedule: "0 7 * * *"  # daily 7am
+    depends_on: [persona]
+    description: >
+      Scan monitored sources, triage by relevance to the user's
+      interest profile, and drop articles worth reading into
+      sources/corpus/reading/radar/ for ingest to process.
+    sources_config: skills/radar/sources.yaml
+
+  ingest:
+    skill: skills/ingest/SKILL.md
+    schedule: chained-after-radar  # also runnable manually
+    depends_on: [persona, radar]
+    description: >
+      Read books and articles from sources/corpus/reading/, extract
+      concepts, and merge into wiki knowledge base. Triggered
+      automatically by run-module.sh after each radar run, and
+      runnable manually for ad-hoc user drops.
+
+  digest:
+    skill: skills/digest/SKILL.md
+    schedule: chained-after-ingest  # also runnable manually
+    depends_on: [persona, ingest]
+    description: >
+      Synthesize today's wiki additions into a daily brief at
+      wiki/digests/YYYY-MM-DD.md. Draws on ingest's structured
+      concept extracts (claims, persona_relevance) to explain why
+      each new concept matters to the user. The user-facing surface
+      of the radar → ingest → digest loop.
+
+sync:
+  code:
+    method: git
+    remote: github  # private repo
+  corpus:
+    method: syncthing
+    direction: bidirectional
+    path: sources/corpus/
+    note: >
+      Reading materials, transcripts, writing samples. User produces
+      on primary machine; twin consumes on the dedicated machine.
+      Radar drops new articles into corpus/reading/radar/ on the twin
+      side, which flow back to the user via the bidirectional sync.
+  sync:
+    method: syncthing
+    direction: user -> twin
+    path: sources/sync/
+    note: >
+      Ad-hoc drop box for files the user wants the twin to process.
+  output:
+    method: syncthing
+    direction: twin -> user
+    path: wiki/
+    note: >
+      Wiki knowledge base produced by the twin, synced back to user.

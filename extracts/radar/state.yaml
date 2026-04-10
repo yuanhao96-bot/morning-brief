@@ -1,0 +1,4 @@
+# Radar de-duplication state. Each URL that radar has seen gets an entry
+# here so it won't be re-triaged on the next run. Autocommitted by
+# run-module.sh after each radar run.
+seen: []

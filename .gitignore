@@ -1,0 +1,32 @@
+# Private data — synced via Syncthing, never committed to git
+sources/
+
+# Wiki — owned by the twin, synced via Syncthing (twin → user)
+wiki/
+
+# Ingest extracts (derived from corpus books, regenerable)
+extracts/ingest/*.yaml
+
+# Generated reports (daily output, regenerable)
+extracts/radar/*.md
+
+# Cron runner output
+cron.log
+
+# Syncthing metadata
+.stfolder/
+.stversions/
+.stignore
+
+# Environment
+.env
+.env.*
+
+# Plugin symlinks (machine-local)
+scripts/
+
+# OS
+.DS_Store
+
+# Obsidian
+.obsidian/

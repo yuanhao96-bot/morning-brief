@@ -1,0 +1,36 @@
+# Information sources for the Radar module.
+# Each source has a URL/query, category, and fetch method.
+#
+# Philosophy: prefer trending / community-curated feeds over keyword
+# search. The persona relevance gate (score ≥ 3) handles topic
+# filtering, so you don't need narrow keyword queries for sources
+# that already curate by quality.
+#
+# Customize this file with sources relevant to your interests.
+
+sources:
+  # ── Examples (replace with your own) ─────────────────────────────
+
+  - name: HuggingFace Daily Papers
+    url: https://huggingface.co/papers
+    category: ml
+    method: web_fetch
+    frequency: daily
+
+  # - name: Hacker News Front Page
+  #   url: https://news.ycombinator.com/
+  #   category: tech
+  #   method: web_fetch
+  #   frequency: daily
+
+  # - name: arXiv cs.CL (keyword search)
+  #   query: "site:arxiv.org cat:cs.CL language model"
+  #   category: ml
+  #   method: web_search
+  #   frequency: daily
+
+  # - name: Your Favorite Blog
+  #   url: https://example.com/blog
+  #   category: tech
+  #   method: web_fetch
+  #   frequency: weekly
