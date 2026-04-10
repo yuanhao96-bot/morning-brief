@@ -1,13 +1,10 @@
-# Digital Twin
+# Morning Brief
 
-A personal information system that scans sources you care about, reads
-the ones worth reading, builds a wiki of structured concepts from
-them, and writes you a morning brief explaining what's new and why
-it matters. Runs unattended on a dedicated machine via launchd
-and Claude Code.
-
-This is **v0.1**, deliberately scoped to the foundational
-information loop: collection, ingestion, and synthesis.
+A personalized daily information system that scans sources you care
+about, reads the ones worth reading, builds a wiki of structured
+concepts from them, and writes you a morning brief explaining what's
+new and why it matters. Runs unattended on a dedicated machine via
+launchd and Claude Code.
 
 ## How it works
 
@@ -47,12 +44,12 @@ there's no nested process stack.
 
 ## Getting started
 
-1. **Clone this repo** onto the machine that will run the twin
+1. **Clone this repo** onto the machine that will run the system
 2. **Fill in `persona/character_sheet.md`** — this is the relevance gate
    for radar and the voice model for digest. Without it, radar filters
    everything and digest sounds generic. You can build it interactively:
    ```bash
-   cd ~/projects/digital-twin
+   cd ~/projects/morning-brief
    claude
    > Run the persona skill: read all files in sources/corpus/, extract
      behavioral signals, and populate persona/character_sheet.md.
@@ -85,7 +82,7 @@ See [SETUP.md](SETUP.md) for the full walkthrough.
 ## Project layout
 
 ```
-digital-twin/
+morning-brief/
 ├── twin.yaml               module manifest (schedules, deps, sync config)
 ├── run-module.sh           launchd wrapper + chain orchestrator
 ├── CLAUDE.md               instructions Claude Code reads on every run
@@ -173,7 +170,7 @@ bad upstream output.
   `run-module.sh` after each radar run.
 - `extracts/ingest/state.yaml` and `extracts/ingest/*.yaml` — gitignored,
   regenerable from `sources/corpus/reading/`.
-- `wiki/` — gitignored, Syncthing-managed twin → user.
+- `wiki/` — gitignored, Syncthing-managed, system → user.
 
 **Where to look when something's wrong:**
 1. `tail -50 cron.log` — chain markers and any stage-level errors

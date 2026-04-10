@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-# Wrapper invoked by launchd to run a digital-twin skill non-interactively,
+# Wrapper invoked by launchd to run a morning-brief skill non-interactively,
 # then autocommit and push any tracked files the module produced.
 #
 # Usage: run-module.sh <module>
@@ -14,7 +14,7 @@ set -euo pipefail
 # Each stage execs the next on success, so launchd only triggers `radar`.
 
 MODULE="$1"
-TWIN_DIR="$HOME/projects/digital-twin"
+TWIN_DIR="$HOME/projects/morning-brief"
 LOG="$TWIN_DIR/cron.log"
 
 # launchd gives us a minimal PATH; restore the homebrew + system locations

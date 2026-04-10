@@ -1,4 +1,4 @@
-# Digital Twin — Setup Guide
+# Morning Brief — Setup Guide
 
 Fresh macOS setup from scratch. Run these phases in order. Takes
 ~30 minutes if Syncthing is already in place on your main machine,
@@ -47,8 +47,8 @@ brew install --cask syncthing obsidian
 ```bash
 gh auth login
 mkdir -p ~/projects && cd ~/projects
-gh repo clone <your-username>/digital-twin
-cd digital-twin
+gh repo clone <your-username>/morning-brief
+cd morning-brief
 ```
 
 ## Phase 3: Claude Code
@@ -101,7 +101,7 @@ In each Syncthing web UI (http://127.0.0.1:8384):
 
 ### 4.2 Verify the corpus path exists on the twin
 ```bash
-ls ~/projects/digital-twin/sources/corpus/reading/
+ls ~/projects/morning-brief/sources/corpus/reading/
 ```
 
 If `sources/corpus/reading/radar/` doesn't exist yet, that's fine —
@@ -118,7 +118,7 @@ Syncthing will have brought it across already. Otherwise, build
 one on the twin from your corpus:
 
 ```bash
-cd ~/projects/digital-twin
+cd ~/projects/morning-brief
 claude
 > Run the persona skill: read all files in sources/corpus/, extract
   behavioral signals, and populate persona/character_sheet.md.
@@ -151,7 +151,7 @@ launchd's tracked PID flows through the whole chain.
 
 ### 7.1 Create the launch agent
 Save the following to
-`~/Library/LaunchAgents/com.<your-username>.digitaltwin.radar.plist`:
+`~/Library/LaunchAgents/com.<your-username>.morningbrief.radar.plist`:
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -159,11 +159,11 @@ Save the following to
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>com.<your-username>.digitaltwin.radar</string>
+    <string>com.<your-username>.morningbrief.radar</string>
 
     <key>ProgramArguments</key>
     <array>
-        <string>/Users/<your-username>/projects/digital-twin/run-module.sh</string>
+        <string>/Users/<your-username>/projects/morning-brief/run-module.sh</string>
         <string>radar</string>
     </array>
 
@@ -176,12 +176,12 @@ Save the following to
     </dict>
 
     <key>WorkingDirectory</key>
-    <string>/Users/<your-username>/projects/digital-twin</string>
+    <string>/Users/<your-username>/projects/morning-brief</string>
 
     <key>StandardOutPath</key>
-    <string>/Users/<your-username>/projects/digital-twin/cron.log</string>
+    <string>/Users/<your-username>/projects/morning-brief/cron.log</string>
     <key>StandardErrorPath</key>
-    <string>/Users/<your-username>/projects/digital-twin/cron.log</string>
+    <string>/Users/<your-username>/projects/morning-brief/cron.log</string>
 
     <key>RunAtLoad</key>
     <false/>
@@ -191,15 +191,15 @@ Save the following to
 
 ### 7.2 Load it
 ```bash
-launchctl load ~/Library/LaunchAgents/com.<your-username>.digitaltwin.radar.plist
-launchctl list | grep digitaltwin
+launchctl load ~/Library/LaunchAgents/com.<your-username>.morningbrief.radar.plist
+launchctl list | grep morningbrief
 ```
 
 ### 7.3 Test the chain manually
 Don't wait until the morning to discover the chain is broken:
 
 ```bash
-cd ~/projects/digital-twin
+cd ~/projects/morning-brief
 ./run-module.sh radar
 tail -50 cron.log
 ```
@@ -227,7 +227,7 @@ ingest had nothing pending.
 open -a Obsidian
 ```
 
-In Obsidian: "Open folder as vault" → select `~/projects/digital-twin/wiki/`.
+In Obsidian: "Open folder as vault" → select `~/projects/morning-brief/wiki/`.
 
 Bookmark `wiki/digests/` so the morning brief is one tap away.
 
@@ -238,7 +238,7 @@ setting it up fresh, run the migrate skill to sanity-check that
 everything's in place:
 
 ```bash
-cd ~/projects/digital-twin
+cd ~/projects/morning-brief
 claude
 > Run the migrate skill.
 ```
@@ -247,7 +247,7 @@ claude
 
 | Task                          | Command                                         |
 |-------------------------------|-------------------------------------------------|
-| Chat with the twin            | `cd ~/projects/digital-twin && claude`         |
+| Chat with the twin            | `cd ~/projects/morning-brief && claude`         |
 | Manual full-chain run         | `./run-module.sh radar`                         |
 | Manual ingest only            | `./run-module.sh ingest`                        |
 | Manual digest only            | `./run-module.sh digest`                        |

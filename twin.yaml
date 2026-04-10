@@ -1,10 +1,10 @@
-name: digital-twin
+name: morning-brief
 version: "0.1.0"
 description: >
-  A digital twin running on a dedicated machine, powered by Claude Code.
-  v0.1 scope: personalized information collection, ingestion into a wiki
-  knowledge base, and a daily synthesis brief. Built around a single
-  chained pipeline: radar → ingest → digest.
+  A personalized daily information system powered by Claude Code.
+  Scans sources you care about, ingests articles into a wiki knowledge
+  base, and writes a morning brief. Built around a single chained
+  pipeline: radar → ingest → digest.
 
 modules:
   persona:
@@ -56,9 +56,9 @@ sync:
     path: sources/corpus/
     note: >
       Reading materials, transcripts, writing samples. User produces
-      on primary machine; twin consumes on the dedicated machine.
-      Radar drops new articles into corpus/reading/radar/ on the twin
-      side, which flow back to the user via the bidirectional sync.
+      on primary machine; the system consumes on the dedicated machine.
+      Radar drops new articles into corpus/reading/radar/ on the
+      dedicated side, which flow back to the user via bidirectional sync.
   sync:
     method: syncthing
     direction: user -> twin
