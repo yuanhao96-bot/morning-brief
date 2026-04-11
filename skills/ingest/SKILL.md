@@ -34,9 +34,12 @@ the entire corpus, not just radar drops from the current day.
    directories the user may have created beyond the defaults.
    Print the complete directory listing. This is the checkpoint:
    if you haven't printed the listing, you haven't done the scan.
-4. Diff the file listing against `state.yaml` paths. For each file
-   not already tracked (or tracked with a different hash), compute
-   its sha256:
+4. **Diff the file listing against `state.yaml` coverage.**
+   Build the set of all corpus file paths from the glob. Build the
+   set of all covered file paths from the union of every entry's
+   `files_included` list in `state.yaml`. Any corpus file not in
+   the covered set is unprocessed. For each unprocessed file (or
+   file with a changed hash), compute its sha256:
    ```bash
    shasum -a 256 <file_path>
    ```
@@ -45,9 +48,9 @@ the entire corpus, not just radar drops from the current day.
    Pre-flight scan:
      Directories found: <list all subdirs of sources/corpus/reading/>
      Total files: N
-     New: X (list paths)
+     Covered by existing entries: C
+     New/unprocessed: X (list paths)
      Changed: Y (list paths)
-     Up-to-date: Z
    ```
    This report is the gate to Phase 1. Do not proceed to extraction
    until it is printed.
@@ -129,7 +132,10 @@ For each book with status `pending` in `state.yaml`:
    ```
 
 5. **Update state.yaml:**
-   Set the book's status to `extracted` and record:
+   Set the book's status to `extracted` and record. The
+   `files_included` field is **mandatory** — it lists every
+   corpus file that was read during this extraction. The
+   pre-flight scan uses this to detect unprocessed files.
    ```yaml
    - path: sources/corpus/reading/trading/book.pdf
      sha256: abc123...
@@ -137,6 +143,23 @@ For each book with status `pending` in `state.yaml`:
      extracted_at: 2026-04-08T10:00:00Z
      concepts_file: extracts/ingest/book.yaml
      concept_count: 12
+     files_included:
+       - sources/corpus/reading/trading/book.pdf
+   ```
+   For batch entries (e.g. radar drops grouped by theme), list
+   every individual file in the batch:
+   ```yaml
+   - path: sources/corpus/reading/radar/llm
+     sha256: aggregate-6-radar-drops-claude-code
+     status: extracted
+     files: 6
+     files_included:
+       - sources/corpus/reading/radar/llm/article-one.md
+       - sources/corpus/reading/radar/llm/article-two.md
+       - sources/corpus/reading/radar/llm/article-three.md
+       - sources/corpus/reading/radar/llm/article-four.md
+       - sources/corpus/reading/radar/llm/article-five.md
+       - sources/corpus/reading/radar/llm/article-six.md
    ```
 
 6. **Log to wiki/log.md:**
@@ -241,7 +264,8 @@ For each book with status `extracted` (or all books if `--full`):
 7. **Update state.yaml:**
    Set each processed book's status to `merged`. Record the wiki pages
    touched as **lists of slugs**, not counts — the [[digest]] module
-   reads these to know what to feature in the daily brief.
+   reads these to know what to feature in the daily brief. Preserve
+   the `files_included` list from the extract phase.
    ```yaml
    - path: sources/corpus/reading/trading/book.pdf
      sha256: abc123...
@@ -250,6 +274,8 @@ For each book with status `extracted` (or all books if `--full`):
      merged_at: 2026-04-08T10:15:00Z
      concepts_file: extracts/ingest/book.yaml
      concept_count: 12
+     files_included:
+       - sources/corpus/reading/trading/book.pdf
      wiki_pages_created:
        - mean-reversion
        - kelly-criterion
