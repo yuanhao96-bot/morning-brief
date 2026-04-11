@@ -16,6 +16,24 @@ launchd and Claude Code.
                   to corpus      merge to wiki   daily brief
 ```
 
+## What it looks like
+
+**Knowledge graph growing from daily radar scans** — each node is a
+concept page, edges are `[[wikilinks]]` between them.
+
+![Obsidian graph view](docs/examples/obsidian-graph.png)
+
+**Daily digest in your voice** — radar articles and books synthesized
+into a brief that explains why each concept matters to you personally.
+([full example](docs/examples/daily-digest.md))
+
+**Wiki pages with multi-source synthesis** — the same concept seen
+through different authors, with tensions noted and a persona connection
+tying it back to your work.
+([full example](docs/examples/wiki-page.md))
+
+## The chain
+
 Three stages, one chain, one launchd job:
 
 - **radar** wakes at 7am, scans the sources in `skills/radar/sources.yaml`,
