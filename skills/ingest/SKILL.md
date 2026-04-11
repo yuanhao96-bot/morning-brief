@@ -46,6 +46,9 @@ For each book with status `pending` in `state.yaml`:
 1. **Parse the book:**
    - PDF: Use the `markitdown` skill to convert to markdown text.
    - txt/md: Read directly.
+   - If the file has YAML frontmatter (radar drops do), extract
+     `source_url` and carry it through to the extract file and
+     wiki pages.
 
 2. **Chunk large books:**
    Books over ~50 pages (or ~25,000 words) should be chunked by
@@ -93,6 +96,7 @@ For each book with status `pending` in `state.yaml`:
      author: "Author Name"
      domain: trading  # or science, philosophy
      source_path: sources/corpus/reading/trading/book-file.pdf
+     source_url: https://arxiv.org/abs/2604.07236  # from corpus frontmatter, if present
 
    concepts:
      - id: concept-slug
@@ -180,6 +184,12 @@ For each book with status `extracted` (or all books if `--full`):
    ### Book Title — Author Name
    Key claims and arguments from this book, with page references.
    (Ch. N, p.XX)
+
+   For radar-sourced articles with a `source_url` in their corpus
+   frontmatter, include the link in the heading:
+
+   ### Paper Title ([source](https://arxiv.org/abs/2604.07236))
+   Key claims and arguments from this paper.
 
    ## Persona Connection
 
