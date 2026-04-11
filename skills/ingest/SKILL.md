@@ -20,24 +20,39 @@ Manual — run after syncing new books into `sources/corpus/reading/`.
 
 ## Process
 
-### Pre-flight
+### Pre-flight — MANDATORY full scan
+
+**Do not skip or shortcut this section.** Every ingest run must scan
+the entire corpus, not just radar drops from the current day.
 
 1. Read `persona/character_sheet.md` to load the user's interests,
    expertise, values, and biases.
 2. Read `extracts/ingest/state.yaml` to load current processing state.
-3. Scan `sources/corpus/reading/` recursively for `.pdf`, `.txt`,
-   and `.md` files.
-4. For each file found, compute its sha256 hash:
+3. **Full corpus scan (required before any extraction):**
+   Glob `sources/corpus/reading/**/*.{pdf,txt,md}` to list every
+   file in the corpus across ALL subdirectories — including any
+   directories the user may have created beyond the defaults.
+   Print the complete directory listing. This is the checkpoint:
+   if you haven't printed the listing, you haven't done the scan.
+4. Diff the file listing against `state.yaml` paths. For each file
+   not already tracked (or tracked with a different hash), compute
+   its sha256:
    ```bash
    shasum -a 256 <file_path>
    ```
-5. Compare against `state.yaml`:
-   - **New file** (path not in state): add with status `pending`.
-   - **Changed file** (path exists but sha256 differs): reset
-     status to `pending`, clear old extract.
-   - **Unchanged file** (path and sha256 match): skip.
-6. Update `state.yaml` with any new/changed entries.
-7. Report: "N books to process, M already up-to-date."
+5. **Print the scan report before proceeding:**
+   ```
+   Pre-flight scan:
+     Directories found: <list all subdirs of sources/corpus/reading/>
+     Total files: N
+     New: X (list paths)
+     Changed: Y (list paths)
+     Up-to-date: Z
+   ```
+   This report is the gate to Phase 1. Do not proceed to extraction
+   until it is printed.
+6. Add new/changed entries to `state.yaml` with status `pending`.
+   Update hashes for changed files.
 
 ### Phase 1 — Extract
 
