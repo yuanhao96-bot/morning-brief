@@ -46,6 +46,17 @@ modules:
       each new concept matters to the user. The user-facing surface
       of the radar → ingest → digest loop.
 
+  query:
+    skill: skills/query/SKILL.md
+    schedule: on-demand
+    depends_on: [ingest]
+    description: >
+      BM25 retrieval primitive over wiki/topics/. Agent-facing
+      lookup: given a query string, returns up to k ranked wiki
+      pages. Rebuilds its index on every call (no persistence);
+      manual Obsidian edits are reflected immediately. Not part
+      of the scheduled chain.
+
 sync:
   code:
     method: git

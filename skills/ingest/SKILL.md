@@ -182,22 +182,44 @@ For each book with status `extracted` (or all books if `--full`):
 
 1. **Load the extract file** from `extracts/ingest/{book-slug}.yaml`.
 
-2. **Load existing wiki topics:**
-   Read all files in `wiki/topics/` to build a list of existing
-   concept pages (name + content summary).
+2. **For each concept in the extract, shortlist candidate existing
+   pages via [[query]]:**
 
-3. **For each concept in the extract, classify it:**
+   Build a query string by concatenating the concept's `name` and
+   `summary`, then call:
 
-   - **New concept** — no existing wiki page covers this idea.
+   ```bash
+   python -m skills.query.query "{name}. {summary}" --k 10 --format json
+   ```
+
+   Parse the JSON. Read the markdown at each `path` in the results
+   (up to 10 pages) to have their full content available for step 3.
+   An empty `results` list means no existing page lexically matches —
+   step 3 will treat the concept as new.
+
+   This replaces scanning the entire `wiki/topics/` directory per
+   run. BM25 shortlisting stays fast regardless of wiki size and
+   keeps the classifier's attention on genuinely relevant candidates.
+   If query misses a true duplicate because of vocabulary mismatch,
+   step 3 creates a near-duplicate page — recoverable later, cheaper
+   than rereading the full corpus every run. For concepts with
+   unusual terminology, re-run query with alternative phrasings
+   before committing to "new".
+
+3. **For each concept in the extract, classify it against its
+   shortlist:**
+
+   - **New concept** — no shortlist page covers this idea
+     (including the empty-shortlist case).
      Action: Create `wiki/topics/{concept-id}.md`.
 
-   - **Enrich existing** — an existing wiki page covers the same
-     core idea (even if named differently).
+   - **Enrich existing** — a shortlist page covers the same core
+     idea (even if named differently).
      Action: Add a new subsection under `## Perspectives` in the
      existing page, citing this book. Update `## Related` links
      if needed.
 
-   - **Related but distinct** — an existing page covers a related
+   - **Related but distinct** — a shortlist page covers a related
      but clearly different idea.
      Action: Create a new page. Add `[[wikilinks]]` to and from
      the related page.

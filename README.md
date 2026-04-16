@@ -112,6 +112,7 @@ morning-brief/
 │   ├── radar/              scan + triage + drop into corpus
 │   ├── ingest/             read corpus → extract concepts → merge to wiki
 │   ├── digest/             synthesize today's additions → daily brief
+│   ├── query/              on-demand BM25 retrieval over wiki/topics/
 │   └── migrate/            one-shot health check after machine migration
 │
 ├── persona/
@@ -171,6 +172,7 @@ The system is designed to be personalized:
 | [radar](skills/radar/SKILL.md)         | launchd, daily 7am       | `sources.yaml`, `state.yaml`, persona          | `sources/corpus/reading/radar/`, `state.yaml`, audit log    |
 | [ingest](skills/ingest/SKILL.md)       | chained after radar      | `sources/corpus/reading/`, persona             | `extracts/ingest/`, `wiki/topics/`, `wiki/index.md`         |
 | [digest](skills/digest/SKILL.md)       | chained after ingest     | `extracts/ingest/`, persona, `wiki/topics/`    | `wiki/digests/YYYY-MM-DD.md`, `wiki/log.md`                 |
+| [query](skills/query/SKILL.md)         | on-demand                | `wiki/topics/`                                 | none (read-only, returns JSON)                               |
 | [migrate](skills/migrate/SKILL.md)     | manual, after machine move | everything                                    | nothing (read-only health check)                             |
 
 ## Operating notes

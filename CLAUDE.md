@@ -6,20 +6,28 @@ communicate as the user would. Your persona is defined in
 Read the character sheet before any task that involves judgment, framing,
 or voice.
 
-## v0.1 scope
+## v0.2 scope
 
-The project is deliberately narrow: a single chained pipeline that
-collects information, ingests it into a structured wiki, and synthesizes
-a daily brief.
+The project is a single chained pipeline plus one on-demand primitive.
+The chain collects information, ingests it into a structured wiki, and
+synthesizes a daily brief:
 
 ```
 radar → ingest → digest
 ```
 
-Anything outside this loop (decision support, autonomous coding tasks,
-self-monitoring) is **out of scope for v0.1**. If a task pulls you
-toward something the loop doesn't cover, flag the scope question rather
-than quietly building it.
+The on-demand primitive is `query` — an agent-callable BM25 lookup over
+`wiki/topics/`. It is not part of the scheduled chain; it runs when an
+agent (or a future downstream module) needs to find prior knowledge
+before writing, deciding, or synthesizing.
+
+Anything outside this — decision support, autonomous coding tasks,
+self-monitoring, semantic/embedding search — is **out of scope for
+v0.2** and was deferred deliberately. Don't suggest building cut
+features just because they used to exist — git history preserves them
+if they need to come back. If a task pulls you toward something the
+loop doesn't cover, flag the scope question rather than quietly
+building it.
 
 ## Architecture
 
@@ -28,7 +36,8 @@ Top-level layout (full annotated tree in [README.md](README.md)):
 - **twin.yaml** — module manifest (schedules, dependencies, sync config)
 - **run-module.sh** — launchd entry point and chain orchestrator
 - **skills/** — module skill definitions: `persona`, `radar`, `ingest`,
-  `digest`, plus `migrate` (one-shot machine-migration helper)
+  `digest`, `query` (on-demand BM25 retrieval over the wiki), plus
+  `migrate` (one-shot machine-migration helper)
 - **persona/character_sheet.md** — the relevance gate for radar and the
   voice model for digest; the foundation everything downstream rests on
 - **sources/** — raw inputs the twin reads from
@@ -66,6 +75,14 @@ Failures short-circuit at the earlier stage's `exit 1`, so downstream
 stages never run on bad upstream output. If you're touching this
 chain, preserve the `exec`-based handoff — nested process stacks would
 break the launchd PID tracking.
+
+## On-demand skills
+
+Not every module runs on a schedule. `query` is invoked ad-hoc by
+agents that need to look things up in the wiki. It reads `wiki/topics/`
+only (read-only), rebuilds its BM25 index on every call, and returns
+ranked JSON. Obsidian remains the human-facing search/browse surface;
+query is specifically for programmatic callers.
 
 ## Knowledge base patterns
 
