@@ -14,52 +14,86 @@ Manual — run after syncing new books into `sources/corpus/reading/`.
 
 - `sources/corpus/reading/` — books as PDF, txt, or md files
 - `persona/character_sheet.md` — user persona for relevance tagging
-- `extracts/ingest/state.yaml` — processing state manifest
-- `extracts/ingest/` — existing extract files (for incremental merge)
+- `extracts/ingest/state/{slug}.yaml` — per-book metadata (git-tracked,
+  written exclusively by `state_db.py`)
+- `extracts/ingest/{slug}.yaml` — per-book concept extracts with their
+  `source_files:` block (git-tracked)
+- `extracts/ingest/.cache/state.db` — derived SQLite index, gitignored
 - `wiki/topics/` — existing wiki pages (for deduplication)
+
+**State-writer contract.** `state_db.py` is the **sole authoritative
+writer** of `extracts/ingest/state/{slug}.yaml` and of the
+`source_files:` block inside `extracts/ingest/{slug}.yaml`. This skill
+writes the concept body of the extract YAML (title, concepts, claims)
+directly with `Write`, then shells out to `state_db.py` to advance
+status and persist source attribution. Never hand-edit a state shard.
 
 ## Process
 
-### Pre-flight — MANDATORY full scan
+### Phase 0 — MANDATORY full scan
 
 **Do not skip or shortcut this section.** Every ingest run must scan
 the entire corpus, not just radar drops from the current day.
 
 1. Read `persona/character_sheet.md` to load the user's interests,
    expertise, values, and biases.
-2. Read `extracts/ingest/state.yaml` to load current processing state.
-3. **Full corpus scan (required before any extraction):**
+
+2. **Full corpus scan (required before any extraction):**
    Glob `sources/corpus/reading/**/*.{pdf,txt,md}` to list every
-   file in the corpus across ALL subdirectories — including any
-   directories the user may have created beyond the defaults.
-   Print the complete directory listing. This is the checkpoint:
-   if you haven't printed the listing, you haven't done the scan.
-4. **Diff the file listing against `state.yaml` coverage.**
-   Build the set of all corpus file paths from the glob. Build the
-   set of all covered file paths from the union of every entry's
-   `files_included` list in `state.yaml`. Any corpus file not in
-   the covered set is unprocessed. For each unprocessed file (or
-   file with a changed hash), compute its sha256:
+   file in the corpus across ALL subdirectories — `radar/`, `trading/`,
+   `philosophy/`, `economics/`, `science/`, and any other directories
+   the user may have created. Print the complete directory listing.
+   This is the checkpoint: if you haven't printed the listing, you
+   haven't done the scan.
+
+3. **Hash every corpus file and write the manifest to `/tmp/corpus.json`:**
    ```bash
-   shasum -a 256 <file_path>
+   python -c "
+   import hashlib, json, sys
+   from pathlib import Path
+   corpus = []
+   for p in Path('sources/corpus/reading').rglob('*'):
+       if p.suffix.lower() in {'.pdf','.txt','.md'}:
+           corpus.append({'path': str(p), 'sha256': hashlib.sha256(p.read_bytes()).hexdigest()})
+   json.dump(corpus, sys.stdout)
+   " > /tmp/corpus.json
    ```
+
+4. **Diff against the index:**
+   ```bash
+   python skills/ingest/state_db.py diff < /tmp/corpus.json
+   ```
+
+   Stdout is a JSON list of corpus paths that are either unprocessed
+   (absent from the `files` table) or changed (sha256 differs from
+   what the index has recorded). No LLM-driven set-math — the DB
+   answers the question exactly.
+
 5. **Print the scan report before proceeding:**
    ```
    Pre-flight scan:
      Directories found: <list all subdirs of sources/corpus/reading/>
      Total files: N
-     Covered by existing entries: C
-     New/unprocessed: X (list paths)
-     Changed: Y (list paths)
+     Unprocessed/changed from diff: X (list paths)
    ```
    This report is the gate to Phase 1. Do not proceed to extraction
    until it is printed.
-6. Add new/changed entries to `state.yaml` with status `pending`.
-   Update hashes for changed files.
+
+6. **Register each new book.** Group the returned paths by proposed
+   book (by directory, by radar-category aggregation, or 1:1 for a
+   standalone file) and for each new book slug, register it:
+   ```bash
+   python skills/ingest/state_db.py upsert-book \
+     --slug "$SLUG" --title "..." --domain "$DOMAIN" \
+     --source-path "..." --status pending
+   ```
+   This writes `extracts/ingest/state/{slug}.yaml` and the `books`
+   row in one atomic call.
 
 ### Phase 1 — Extract
 
-For each book with status `pending` in `state.yaml`:
+For each book with status `pending` (as reported by `state_db.py diff`
+and now registered via `upsert-book`):
 
 1. **Parse the book:**
    - PDF: Use the `markitdown` skill to convert to markdown text.
@@ -72,18 +106,9 @@ For each book with status `pending` in `state.yaml`:
    Books over ~50 pages (or ~25,000 words) should be chunked by
    chapter or major section. Split on `# ` headings in markdown,
    or on clear chapter boundaries in converted PDFs.
-   Update `state.yaml` status to `extracting` with per-chunk
-   tracking:
-   ```yaml
-   - path: sources/corpus/reading/trading/big-book.pdf
-     sha256: ...
-     status: extracting
-     chunks:
-       - range: "chapters 1-5"
-         status: extracted
-       - range: "chapters 6-10"
-         status: pending
-   ```
+   For chunk-at-a-time progress, call `upsert-book --status extracting`
+   between chunks; the per-slug lock in `state_db.py` serializes
+   concurrent writes.
 
 3. **Extract concepts from each chunk:**
    For each chunk, identify:
@@ -102,7 +127,9 @@ For each book with status `pending` in `state.yaml`:
    represent a substantive idea the author develops, not a single
    offhand reference.
 
-4. **Write the extract file:**
+4. **Write the extract file body** (concepts only — **not** the
+   `source_files:` block; that block is owned by `state_db.py` and
+   gets written by `complete-extraction` in the next step):
    Save to `extracts/ingest/{book-slug}.yaml` where `book-slug`
    is the filename without extension, lowercased, spaces replaced
    with hyphens.
@@ -115,6 +142,7 @@ For each book with status `pending` in `state.yaml`:
      domain: trading  # or science, philosophy
      source_path: sources/corpus/reading/trading/book-file.pdf
      source_url: https://arxiv.org/abs/2604.07236  # from corpus frontmatter, if present
+     slug: book-slug
 
    concepts:
      - id: concept-slug
@@ -131,36 +159,40 @@ For each book with status `pending` in `state.yaml`:
          known interests or challenges known biases.
    ```
 
-5. **Update state.yaml:**
-   Set the book's status to `extracted` and record. The
-   `files_included` field is **mandatory** — it lists every
-   corpus file that was read during this extraction. The
-   pre-flight scan uses this to detect unprocessed files.
-   ```yaml
-   - path: sources/corpus/reading/trading/book.pdf
-     sha256: abc123...
-     status: extracted
-     extracted_at: 2026-04-08T10:00:00Z
-     concepts_file: extracts/ingest/book.yaml
-     concept_count: 12
-     files_included:
-       - sources/corpus/reading/trading/book.pdf
+5. **Advance status to `extracted` atomically.**
+   Build the source_files JSON (one entry per corpus file that fed
+   this book) and pipe it to `complete-extraction`:
+   ```bash
+   SOURCE_FILES_JSON=$(python -c "
+   import hashlib, json, sys
+   from pathlib import Path
+   files = [
+     # list every corpus path that fed this book
+     'sources/corpus/reading/trading/book.pdf',
+   ]
+   out = []
+   for rel in files:
+       data = Path(rel).read_bytes()
+       out.append({
+           'path': rel,
+           'sha256': hashlib.sha256(data).hexdigest(),
+           'size': len(data),
+       })
+   json.dump(out, sys.stdout)
+   ")
+   echo "$SOURCE_FILES_JSON" | python skills/ingest/state_db.py \
+     complete-extraction --slug "$SLUG" \
+     --extracted-at "$(date -u +%FT%TZ)"
    ```
-   For batch entries (e.g. radar drops grouped by theme), list
-   every individual file in the batch:
-   ```yaml
-   - path: sources/corpus/reading/radar/llm
-     sha256: aggregate-6-radar-drops-claude-code
-     status: extracted
-     files: 6
-     files_included:
-       - sources/corpus/reading/radar/llm/article-one.md
-       - sources/corpus/reading/radar/llm/article-two.md
-       - sources/corpus/reading/radar/llm/article-three.md
-       - sources/corpus/reading/radar/llm/article-four.md
-       - sources/corpus/reading/radar/llm/article-five.md
-       - sources/corpus/reading/radar/llm/article-six.md
-   ```
+
+   `complete-extraction` bundles every write Phase 1 needs into one
+   subprocess: it writes `source_files:` into the concept extract
+   YAML, then advances the state shard's `status` to `extracted`
+   (writing `extracted_at` at the same time), then updates the DB.
+   A process crash at any point leaves a consistent pre-advance state
+   — the next ingest run's fingerprint check triggers rebuild, which
+   succeeds because the book is still `extracting` (source_files
+   tolerated) or cleanly `extracted` (source_files present).
 
 6. **Log to wiki/log.md:**
    Append a row:
@@ -283,29 +315,25 @@ For each book with status `extracted` (or all books if `--full`):
    `### Minor: Concept Name` under the related topic's
    `## Core Idea` section.
 
-7. **Update state.yaml:**
-   Set each processed book's status to `merged`. Record the wiki pages
-   touched as **lists of slugs**, not counts — the [[digest]] module
-   reads these to know what to feature in the daily brief. Preserve
-   the `files_included` list from the extract phase.
-   ```yaml
-   - path: sources/corpus/reading/trading/book.pdf
-     sha256: abc123...
-     status: merged
-     extracted_at: 2026-04-08T10:00:00Z
-     merged_at: 2026-04-08T10:15:00Z
-     concepts_file: extracts/ingest/book.yaml
-     concept_count: 12
-     files_included:
-       - sources/corpus/reading/trading/book.pdf
-     wiki_pages_created:
-       - mean-reversion
-       - kelly-criterion
-       - drawdown-control
-     wiki_pages_updated:
-       - position-sizing
-       - risk-of-ruin
+7. **Advance status to `merged` atomically.**
+   After writing all wiki pages for this book, invoke:
+   ```bash
+   python skills/ingest/state_db.py complete-merge \
+     --slug "$SLUG" --merged-at "$(date -u +%FT%TZ)" \
+     --concept-count "$N"
    ```
+
+   `complete-merge` sets `status=merged`, `merged_at`, and
+   `concept_count` in the state shard and DB in one subprocess.
+   The command enforces state-machine preconditions: it requires
+   the prior status to be `extracted` and the extract YAML to carry
+   a `source_files:` block — illegal transitions exit non-zero
+   before touching anything.
+
+   Recording the wiki pages touched as slug lists (for digest's
+   consumption) is out of scope for the current CLI — track in a
+   follow-up `wiki-pages` subcommand if the need grows. Do **not**
+   hand-edit `extracts/ingest/state/{slug}.yaml`.
 
 8. **Update wiki/index.md:**
    Under `## Topics`, add entries for each new concept page:
@@ -325,15 +353,19 @@ For each book with status `extracted` (or all books if `--full`):
    ```
 
    The downstream [[digest]] module runs immediately after ingest and
-   will read the per-book entries in `state.yaml` whose `merged_at`
-   field matches today's date. Make sure those entries are written
-   before ingest exits — otherwise digest will see no work and write
-   a "nothing new today" brief by mistake.
+   queries `state_db.py merged-on $(date -u +%F)` to find today's
+   merges. Make sure `complete-merge` has been called for every
+   finished book before ingest exits — otherwise digest sees an
+   empty list and writes a "nothing new today" brief by mistake.
 
 ## Output
 
 - `extracts/ingest/{book-slug}.yaml` — per-book structured extracts
-- `extracts/ingest/state.yaml` — updated processing manifest
+  (body written by this skill; `source_files:` written by CLI)
+- `extracts/ingest/state/{book-slug}.yaml` — per-book state shard
+  (written exclusively by `state_db.py`)
+- `extracts/ingest/.cache/state.db` — derived SQLite index (updated
+  by every CLI invocation; gitignored)
 - `wiki/topics/*.md` — new or updated concept pages
 - `wiki/index.md` — updated content catalog
 - `wiki/log.md` — activity log entries

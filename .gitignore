@@ -4,8 +4,8 @@ sources/
 # Wiki — owned by the twin, synced via Syncthing (twin → user)
 wiki/
 
-# Ingest extracts (derived from corpus books, regenerable)
-extracts/ingest/*.yaml
+# Ingest cache (SQLite index, rebuildable from canonical YAMLs)
+extracts/ingest/.cache/
 
 # Generated reports (daily output, regenerable)
 extracts/radar/*.md

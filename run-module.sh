@@ -34,15 +34,17 @@ case "$MODULE" in
     ALLOWED_TOOLS=(Read Write Edit Glob Grep WebFetch WebSearch Bash)
     ;;
   ingest)
-    # All ingest outputs are gitignored: extracts/ingest/*.yaml is regenerable
-    # and wiki/ is Syncthing-managed (twin → user). Nothing to commit.
-    COMMIT_PATHS=()
-    ALLOWED_TOOLS=(Read Write Edit Glob Grep "Bash(shasum:*)")
+    # Per-book concept extracts and state/ yamls are git-tracked after the
+    # state_db shard refactor (only .cache/ is gitignored). wiki/ remains
+    # Syncthing-managed (twin → user) and is not committed here.
+    COMMIT_PATHS=(extracts/ingest)
+    ALLOWED_TOOLS=(Read Write Edit Glob Grep "Bash(python:*)" "Bash(python3:*)" "Bash(shasum:*)")
     ;;
   digest)
     # Digest writes to wiki/digests/, which is gitignored (Syncthing-managed).
+    # state_db.py is invoked to query today's merged books.
     COMMIT_PATHS=()
-    ALLOWED_TOOLS=(Read Write Edit Glob Grep)
+    ALLOWED_TOOLS=(Read Write Edit Glob Grep "Bash(python:*)" "Bash(python3:*)")
     ;;
   *)
     echo "$(date -Iseconds) | unknown module: $MODULE" >> "$LOG"

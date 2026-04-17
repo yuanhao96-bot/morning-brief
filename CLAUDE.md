@@ -48,8 +48,9 @@ Top-level layout (full annotated tree in [README.md](README.md)):
 - **extracts/** — derived intermediate state, not user-facing
   - `radar/state.yaml` — URL de-dup (git-tracked)
   - `radar/YYYY-MM-DD.md` — radar's daily audit log (gitignored)
-  - `ingest/state.yaml` — per-book hash + status manifest
-  - `ingest/{slug}.yaml` — per-book structured concept extracts
+  - `ingest/state/{slug}.yaml` — per-book metadata (git-tracked)
+  - `ingest/{slug}.yaml` — per-book concept extract + source_files (git-tracked)
+  - `ingest/.cache/state.db` — SQLite index, derived, gitignored
 - **wiki/** — the LLM-maintained knowledge base (Syncthing, twin → user)
   - `topics/` — concept pages built by ingest
   - `digests/YYYY-MM-DD.md` — daily briefs written by digest (the

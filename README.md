@@ -42,18 +42,21 @@ Three stages, one chain, one launchd job:
   markdown into `sources/corpus/reading/radar/{category}/`.
   Radar **does not summarize or read for content** — it's pure triage.
 - **ingest** runs immediately after radar via `exec`. It hashes every file
-  under `sources/corpus/reading/`, finds new and changed ones, parses them
-  into structured concept extracts (`extracts/ingest/{slug}.yaml`), then
-  merges those concepts into `wiki/topics/` pages. Existing pages get new
-  perspectives appended; truly new concepts get their own page. Ingest
-  doesn't care whether a file came from radar or from a manual Syncthing
-  drop — same pipeline.
-- **digest** runs immediately after ingest, also via `exec`. It reads
-  ingest's `state.yaml`, finds books merged today, ranks the new concepts
-  by `persona_relevance` and claim density, and writes a daily brief to
-  `wiki/digests/YYYY-MM-DD.md`. The brief is the only narrative output —
-  radar is silent, ingest is structural, digest is the surface you
-  actually read in Obsidian each morning.
+  under `sources/corpus/reading/`, finds new and changed ones via a SQL
+  diff against `extracts/ingest/.cache/state.db` (a derived SQLite index
+  backed by the plaintext YAMLs), parses them into structured concept
+  extracts (`extracts/ingest/{slug}.yaml` — concept name, summary, claims
+  with section anchors, related concepts, domain tags, persona relevance),
+  then merges those concepts into `wiki/topics/` pages. Existing pages
+  get new perspectives appended; truly new concepts get their own page.
+  Ingest doesn't care whether a file came from radar or from a manual
+  Syncthing drop — same pipeline.
+- **digest** runs immediately after ingest, also via `exec`. It queries
+  `state_db.py merged-on <today>` for books merged today, ranks the new
+  concepts by `persona_relevance` and claim density, and writes a daily
+  brief to `wiki/digests/YYYY-MM-DD.md`. The brief is the only narrative
+  output — radar is silent, ingest is structural, digest is the surface
+  you actually read in Obsidian each morning.
 
 The whole chain is wired through a single shell script
 (`run-module.sh`) that uses `exec` to hand the launchd-tracked PID

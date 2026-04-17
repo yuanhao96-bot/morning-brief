@@ -16,7 +16,8 @@ Also runnable manually via `./run-module.sh digest` for ad-hoc
 re-synthesis (e.g., after a manual ingest of user-curated books).
 
 ## Inputs
-- `extracts/ingest/state.yaml` — find books merged today
+- `skills/ingest/state_db.py merged-on <date>` — find books merged today
+- `extracts/ingest/state/{book-slug}.yaml` — per-book metadata
 - `extracts/ingest/{book-slug}.yaml` — structured concepts per book
 - `wiki/topics/*.md` — for the synthesized "Core Idea" text on each new page
 - `extracts/radar/YYYY-MM-DD.md` — today's radar audit log (for the rejected-items section)
@@ -27,17 +28,24 @@ re-synthesis (e.g., after a manual ingest of user-curated books).
 ### 1. Determine what's new today
 Compute today's date as `YYYY-MM-DD`.
 
-Read `extracts/ingest/state.yaml`. Find every book whose `merged_at`
-date equals today (compare the date portion only — `merged_at` is an
-ISO timestamp). For each such book:
-- Load its `concepts_file` (the per-book extract YAML).
-- Read its `wiki_pages_created` and `wiki_pages_updated` lists.
+Query the ingest state index for books merged today:
+
+```bash
+TODAY=$(date -u +%F)
+python skills/ingest/state_db.py merged-on "$TODAY"
+```
+
+Stdout is JSON: `[{slug, title, domain, concept_count}, ...]`. For
+each returned slug:
+- `Read` `extracts/ingest/state/{slug}.yaml` for metadata and any
+  recorded wiki pages.
+- `Read` `extracts/ingest/{slug}.yaml` for the concept body.
 
 Pool every concept across all of today's books into a single working
 set, keyed by wiki page slug. If the same concept slug appears in
 multiple books (an enrichment merge), keep both perspectives.
 
-If no books were merged today, write a one-line "nothing new today"
+If the `merged-on` list is empty, write a one-line "nothing new today"
 digest (see step 4) and exit cleanly. The point is to make it visible
 that the system *ran*, not that it's broken.
 
