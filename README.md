@@ -133,8 +133,12 @@ morning-brief/
 │   │   ├── state.yaml      URL de-dup (git-tracked)
 │   │   └── YYYY-MM-DD.md   daily audit log
 │   └── ingest/
-│       ├── state.yaml      per-book hash + status manifest
-│       └── {slug}.yaml     per-book structured concept extracts
+│       ├── state/
+│       │   └── {slug}.yaml per-book metadata (git-tracked)
+│       ├── {slug}.yaml     per-book concept extract + source_files (git-tracked)
+│       ├── hash_corpus.py  corpus hasher used by the diff phase
+│       └── .cache/
+│           └── state.db    SQLite index, derived, gitignored
 │
 ├── wiki/                   the LLM-maintained knowledge base
 │   ├── index.md            catalog of topics, books, entities
@@ -150,6 +154,10 @@ morning-brief/
 - macOS with Homebrew (designed for a dedicated Mac; adaptable to Linux)
 - [Claude Code](https://docs.anthropic.com/en/docs/claude-code) (`npm install -g @anthropic-ai/claude-code`)
 - An Anthropic API key
+- Python 3.9+ with the ingest module's deps installed:
+  `pip install -r skills/ingest/requirements.txt` (PyYAML, pytest).
+  Ingest and digest shell out to `skills/ingest/state_db.py`, so headless
+  runs fail without these.
 - [Syncthing](https://syncthing.net/) for file sync between machines
 - [Obsidian](https://obsidian.md/) for reading the wiki (optional but recommended)
 
@@ -191,8 +199,12 @@ bad upstream output.
 **State files:**
 - `extracts/radar/state.yaml` — git-tracked, autocommitted by
   `run-module.sh` after each radar run.
-- `extracts/ingest/state.yaml` and `extracts/ingest/*.yaml` — gitignored,
-  regenerable from `sources/corpus/reading/`.
+- `extracts/ingest/{slug}.yaml` and `extracts/ingest/state/{slug}.yaml` —
+  git-tracked, autocommitted by `run-module.sh` after each ingest run.
+  These plaintext YAMLs are the canonical state.
+- `extracts/ingest/.cache/state.db` — gitignored; a derived SQLite index
+  rebuilt on demand by `skills/ingest/state_db.py` from the YAMLs above
+  using fingerprint invalidation.
 - `wiki/` — gitignored, Syncthing-managed, system → user.
 
 **Where to look when something's wrong:**
@@ -200,4 +212,7 @@ bad upstream output.
 2. `extracts/radar/$(date +%Y-%m-%d).md` — what radar saw and why
    it accepted/rejected each item
 3. `wiki/log.md` — cross-module activity log
-4. `extracts/ingest/state.yaml` — per-book status
+4. `python3 skills/ingest/state_db.py status` — cache freshness and
+   per-book status counts
+5. `extracts/ingest/state/{slug}.yaml` — per-book status for a specific
+   book (canonical; the SQLite index is derived)

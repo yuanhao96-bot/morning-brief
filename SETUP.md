@@ -67,6 +67,29 @@ source ~/.zshrc
 claude --version
 ```
 
+## Phase 3b: Python dependencies (ingest + digest)
+
+Ingest and digest shell out to `skills/ingest/state_db.py` (SQLite-backed
+state index) during every headless run, so Python needs to be available
+with PyYAML installed. pytest is included if you want to run the ingest
+test suite (31 tests covering schema, diff, and YAML-first writes).
+
+```bash
+cd ~/projects/morning-brief
+pip install -r skills/ingest/requirements.txt
+# or, if you prefer uv:
+# uv pip install -r skills/ingest/requirements.txt
+
+# sanity check
+python3 skills/ingest/state_db.py --help
+(cd skills/ingest && python3 -m pytest test_state_db.py -q)
+```
+
+Without these, `./run-module.sh ingest` will silently no-op in headless
+mode (the inner agent will block on sandboxed `python` calls and exit
+cleanly), and digest will then hang against an empty delta until the
+Anthropic API stream-idle timeout fires ~3 hours later.
+
 ## Phase 4: Syncthing
 
 Three folders move data between your main machine and the twin.
